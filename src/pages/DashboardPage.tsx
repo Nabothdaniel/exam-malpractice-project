@@ -3,9 +3,13 @@ import { FiPlus, FiClock } from "react-icons/fi"
 import { gsap } from "gsap"
 import { useCaseStore } from "../store/caseStore"
 import CaseCards from "../components/CasesCards"
+import { setPageTitle } from "@/utils/helperFunctions"
 
 const DashboardPage = () => {
-  const { caseTypes, cases, recentUpdates, openCreateCaseModal, fetchCases,} = useCaseStore()
+  useEffect(() => {
+    setPageTitle("Dashboard")
+  }, [])
+  const { caseTypes, cases, recentUpdates, openCreateCaseModal, fetchCases, } = useCaseStore()
 
   useEffect(() => {
     fetchCases()

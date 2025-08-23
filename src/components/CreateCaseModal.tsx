@@ -13,6 +13,7 @@ const CreateCaseModal = () => {
     matricNumber: "",
     studentEmail: "",
     department: "",
+    level: "",
     caseType: "",
     description: "",
     priority: "medium" as "low" | "medium" | "high",
@@ -33,6 +34,7 @@ const CreateCaseModal = () => {
       if (!formData.studentEmail.trim()) newErrors.studentEmail = "Student email is required"
       else if (!/\S+@\S+\.\S+/.test(formData.studentEmail)) newErrors.studentEmail = "Invalid email address"
       if (!formData.department.trim()) newErrors.department = "Department is required"
+      if (!formData.level.trim()) newErrors.level = "Department is required"
     }
     if (currentStep === 2) {
       if (!formData.caseType) newErrors.caseType = "Case type is required"
@@ -64,6 +66,7 @@ const CreateCaseModal = () => {
         matricNumber: "",
         studentEmail: "",
         department: "",
+        level:"",
         caseType: "",
         description: "",
         priority: "medium",
@@ -186,6 +189,19 @@ const CreateCaseModal = () => {
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.department ? "border-red-300" : "border-gray-300"}`}
                   />
                   {errors.department && <p className="mt-1 text-sm text-red-600">{errors.department}</p>}
+                </div>
+
+                  {/* Level */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Level *</label>
+                  <input
+                    type="text"
+                    value={formData.level}
+                    onChange={(e) => handleInputChange("level", e.target.value)}
+                    placeholder="Enter student's level"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.level ? "border-red-300" : "border-gray-300"}`}
+                  />
+                  {errors.level && <p className="mt-1 text-sm text-red-600">{errors.level}</p>}
                 </div>
               </div>
             </>

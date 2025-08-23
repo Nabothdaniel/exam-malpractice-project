@@ -1,14 +1,21 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { FiSearch, FiFilter, FiDownload, FiEye, FiEdit, FiTrash2, FiPlus, FiX } from "react-icons/fi"
+import { FiSearch, FiEye, FiEdit, FiTrash2, FiPlus, FiX } from "react-icons/fi"
 import { useCaseStore } from "../store/caseStore"
 import { toast } from "react-toastify"
+import { setPageTitle } from "@/utils/helperFunctions"
+import EditStatusModal from "@/components/EditStatusModal"
 
 const CasesPage = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+
+  useEffect(() => {
+    setPageTitle(" Cases")
+  }, [])
+
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [selectedCase, setSelectedCase] = useState<any>(null)
@@ -172,35 +179,112 @@ const CasesPage = () => {
         {/* 🔹 Preview Modal */}
         {isPreviewOpen && selectedCase && (
           <Modal onClose={() => setIsPreviewOpen(false)} title="Case Details">
-            <p><strong>ID:</strong> {selectedCase.id}</p>
-            <p><strong>Student:</strong> {selectedCase.studentName}</p>
-            <p><strong>Matric:</strong> {selectedCase.matricNumber}</p>
-            <p><strong>Type:</strong> {selectedCase.caseType}</p>
-            <p><strong>Status:</strong> {selectedCase.status}</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-2 py-6">
+              {/* Left side - Case main info */}
+              <div className="md:col-span-2 bg-white rounded-2xl px-3 py-6 shadow-sm">
+                {/* Header */}
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold">Case — {selectedCase.caseType}</h2>
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${selectedCase.status === "resolved"
+                        ? "bg-green-100 text-green-700"
+                        : selectedCase.status === "pending"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : selectedCase.status === "investigating"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-gray-100 text-gray-700"
+                      }`}
+                  >
+                    {selectedCase.status}
+                  </span>
+                </div>
+
+                {/* Case Details */}
+                <div className="space-y-2 text-sm text-gray-700">
+                  <p><strong>ID:</strong> {selectedCase.id}</p>
+                  <p><strong>Student:</strong> {selectedCase.studentName} ({selectedCase.matricNumber})</p>
+                  <p><strong>Email:</strong> {selectedCase.studentEmail}</p>
+                  <p><strong>Department:</strong> {selectedCase.department}</p>
+                  <p>
+                    <strong>Priority:</strong>{" "}
+                    <span
+                      className={`px-2 py-0.5 rounded text-xs ${selectedCase.priority === "high"
+                          ? "bg-red-100 text-red-700"
+                          : selectedCase.priority === "medium"
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-green-100 text-green-700"
+                        }`}
+                    >
+                      {selectedCase.priority}
+                    </span>
+                  </p>
+                  <p><strong>Investigator:</strong> {selectedCase.assignedInvestigator}</p>
+                  <p><strong>Created At:</strong> {new Date(selectedCase.createdAt).toLocaleString()}</p>
+                </div>
+
+                {/* Description */}
+                <div className="mt-6">
+                  <h3 className="font-medium mb-2">Description</h3>
+                  <p className="text-gray-600">{selectedCase.description}</p>
+                </div>
+
+                {/* Media */}
+                {selectedCase.media && (
+                  <div className="mt-6">
+                    <h3 className="font-medium mb-2">Evidence / Media</h3>
+                    <img
+                      src={selectedCase.media}
+                      alt="Case Media"
+                      className="w-full max-h-64 object-cover rounded-lg shadow"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Right side - Quick info */}
+              <div className="bg-gray-50 shadow rounded-2xl p-6 space-y-6">
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-600">Case Role</h4>
+                  <p className="mt-1 text-gray-800">Assigned Investigator: {selectedCase.assignedInvestigator}</p>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-600">Case Progress</h4>
+                  <div className="mt-2 bg-gray-200 rounded-full h-2 w-full">
+                    <div
+                      className={`h-2 rounded-full ${selectedCase.status === "resolved"
+                          ? "bg-green-500 w-full"
+                          : selectedCase.status === "investigating"
+                            ? "bg-blue-500 w-2/3"
+                            : selectedCase.status === "pending"
+                              ? "bg-yellow-500 w-1/3"
+                              : "bg-gray-400 w-1/5"
+                        }`}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-600">Labels</h4>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded">
+                      {selectedCase.caseType}
+                    </span>
+                    <span className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded">
+                      {selectedCase.priority}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </Modal>
         )}
 
         {/* 🔹 Edit Status Modal */}
         {isEditOpen && selectedCase && (
           <Modal onClose={() => setIsEditOpen(false)} title="Update Status">
-            <select
-              value={newStatus}
-              onChange={(e) =>
-                setNewStatus(e.target.value as "active" | "pending" | "resolved" | "investigating")
-              }
-              className="w-full border rounded-md p-2 mb-4"
-            >
-              <option value="active">Active</option>
-              <option value="investigating">Investigating</option>
-              <option value="pending">Pending</option>
-              <option value="resolved">Resolved</option>
-            </select>
-            <button
-              onClick={confirmStatusUpdate}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md"
-            >
-              Save
-            </button>
+           <EditStatusModal selectedCaseId={selectedCase.id} onClose={() => setIsEditOpen(false)} />
           </Modal>
         )}
 
@@ -209,7 +293,7 @@ const CasesPage = () => {
           <Modal onClose={() => setIsDeleteOpen(false)} title="Delete Case">
             <p>Are you sure you want to delete <strong>{selectedCase.id}</strong>?</p>
             <div className="flex gap-3 mt-4">
-              <button onClick={confirmDelete} className="bg-red-600 text-white px-4 py-2 rounded-md">Yes, Delete</button>
+              <button onClick={confirmDelete} className="bg-red-600 text-white px-4 py-2 cursor-pointer rounded-md">Yes, Delete</button>
               <button onClick={() => setIsDeleteOpen(false)} className="bg-gray-200 px-4 py-2 rounded-md">Cancel</button>
             </div>
           </Modal>
@@ -221,13 +305,24 @@ const CasesPage = () => {
 
 // 🟢 Reusable Modal Component
 const Modal = ({ children, onClose, title }: { children: React.ReactNode; onClose: () => void; title: string }) => (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div className="bg-white p-6 rounded-lg w-full max-w-md relative">
-      <button onClick={onClose} className="absolute top-3 right-3 text-gray-500"><FiX /></button>
-      <h2 className="text-lg font-semibold mb-4">{title}</h2>
-      {children}
+  <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 px-4">
+    <div className="bg-white rounded-lg w-full max-w-5xl relative max-h-[90vh] overflow-y-auto p-6">
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-3 right-5 text-3xl cursor-pointer text-gray-500"
+      >
+        <FiX />
+      </button>
+
+      {/* Modal Title */}
+      <h2 className="text-xl md:text-2xl font-semibold mb-6">{title}</h2>
+
+      {/* Modal Content */}
+      <div className="w-full">{children}</div>
     </div>
   </div>
+
 )
 
 export default CasesPage

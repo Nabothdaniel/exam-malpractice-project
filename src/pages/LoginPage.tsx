@@ -1,11 +1,12 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Navigate } from "react-router-dom"
 import { FiEye, FiEyeOff, FiMail, FiLock } from "react-icons/fi"
 import { useAuthStore } from "../store/authStore"
 import bannerImg from '../assets/login-banner.png'
+import { setPageTitle } from "@/utils/helperFunctions"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -17,7 +18,9 @@ export default function LoginPage() {
 
   const { login, isAuthenticated } = useAuthStore()
 
-
+  useEffect(() => {
+    setPageTitle("Exam Malpractice Documentation System")
+  }, [])
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />
