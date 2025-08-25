@@ -1,3 +1,19 @@
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: "superadmin" | "admin" | "investigator" | "viewer";
+}
+
+export interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  userProfile: User | null; // 🔹 separate profile state
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  fetchUserProfile: () => Promise<void>; // 🔹 auto-fetch for logged-in user
+}
+
 export interface CaseType {
   id: string;
   title: string;
@@ -10,6 +26,7 @@ export interface CaseType {
 
 export interface Case {
   id: string;
+  caseNumber:string;
   studentName: string;
   matricNumber: string;
   studentEmail: string;
@@ -83,4 +100,24 @@ export interface CaseStore {
   closeCreateCaseModal: () => void;
   getCaseTypeById: (id: string) => { id: string; title: string } | undefined;
 }
+
+export interface Investigator {
+  id: string
+  name: string
+  email: string
+  department: string
+  role: "investigator" | "admin" // if needed
+  assignedCases?: string[] // array of Case IDs (optional)
+}
+
+export interface Student {
+  id: string
+  name: string
+  matricNumber: string
+  email: string
+  department: string
+  cases?: string[] // array of Case IDs
+}
+
+
 

@@ -1,30 +1,13 @@
-import { query, collection, where, getDocs } from "firebase/firestore";
-import { db } from "@/firebase/firebase";
 
-export const generateCaseId = async () => {
+
+export const generateCaseId = () => {
   const now = new Date();
-
-  // Get year, day, and month
   const year = now.getFullYear();
   const day = String(now.getDate()).padStart(2, "0");
   const month = String(now.getMonth() + 1).padStart(2, "0");
+  const random = Math.floor(Math.random() * 1000); 
 
-  // Fetch total number of cases today to use as order
-  // (example assumes cases are stored in "cases" collection in Firestore)
-  const startOfDay = new Date(now.setHours(0, 0, 0, 0));
-  const endOfDay = new Date(now.setHours(23, 59, 59, 999));
-
-  const q = query(
-    collection(db, "cases"),
-    where("createdAt", ">=", startOfDay),
-    where("createdAt", "<=", endOfDay)
-  );
-
-  const snapshot = await getDocs(q);
-  const order = String(snapshot.size + 1).padStart(2, "0"); // ensures 2 digits
-
-  // Final Case ID
-  return `CASE-${year}-${day}${month}${order}`;
+  return `CASE-${year}-${day}${month}-${random}`;
 };
 
 export const getStatusBadge = (status: string) => {

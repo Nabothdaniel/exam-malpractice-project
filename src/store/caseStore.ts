@@ -1,15 +1,13 @@
 import { create } from "zustand";
 import {
   collection,
-  getDocs,
   addDoc,
-  setDoc,
   updateDoc,
   deleteDoc,
   doc,
   query,
   orderBy,
-  limit,
+  onSnapshot,
   QueryDocumentSnapshot
 } from "firebase/firestore";
 import { db } from "../firebase/firebase";
@@ -23,17 +21,11 @@ const mapDocToCase = (docSnap: QueryDocumentSnapshot): Case => {
   return { id: docSnap.id, ...data };
 };
 
+let unsubscribeCases: (() => void) | null = null;
+
+
 export const useCaseStore = create<CaseStore>((set, get) => ({
   caseTypes: [
-    {
-      id: "caseType1",
-      title: "Academic Misconduct",
-      scope: "Cheating, plagiarism, exam malpractice",
-      description: "Cases involving academic integrity violations",
-      count: 0,
-      status: "active",
-      color: "bg-red-100 text-red-700 border-red-200",
-    },
     {
       id: "caseType2",
       title: "Exam Malpractice",
@@ -54,72 +46,95 @@ export const useCaseStore = create<CaseStore>((set, get) => ({
 
   // Fetch all cases
   fetchCases: async () => {
-    set({ loading: true });
-    try {
-      const allCasesSnapshot = await getDocs(
-        query(collection(db, "cases"), orderBy("createdAt", "desc"))
-      );
-      const allCases: Case[] = allCasesSnapshot.docs.map(mapDocToCase);
+  set({ loading: true });
 
-      const recentSnapshot = await getDocs(
-        query(collection(db, "cases"), orderBy("createdAt", "desc"), limit(10))
-      );
-      const recentCases: Case[] = recentSnapshot.docs.map(mapDocToCase);
-
-      const updatedCaseTypes = get().caseTypes.map((ct) => ({
-        ...ct,
-        count: allCases.filter((c) => c.caseType === ct.id).length,
-      }));
-
-      set({ cases: allCases, recentCases, caseTypes: updatedCaseTypes });
-    } catch (error) {
-      console.error("Error fetching cases:", error);
-    } finally {
-      set({ loading: false });
+  try {
+    if (unsubscribeCases) {
+      unsubscribeCases();
     }
-  },
 
-  // Add new case
-  addCase: async (newCase: NewCase) => {
-    try {
-      const caseId = await generateCaseId();
-      const investigators = ["Dr. Smith", "Prof. Johnson", "Mrs. Lee"];
+    const q = query(collection(db, "cases"), orderBy("createdAt", "desc"));
 
-      const caseData: Case = {
-        id: caseId,
-        ...newCase,
-        assignedInvestigator: newCase.assignedInvestigator || investigators[0],
-        status: "active",
-        createdAt: new Date().toISOString(),
-        media: null,
-      };
+     unsubscribeCases = onSnapshot(
+      q,
+      (snapshot) => {
+        const allCases: Case[] = snapshot.docs.map(mapDocToCase);
+        const recentCases = allCases.slice(0, 10);
 
-      const caseRef = await addDoc(collection(db, "cases"), caseData);
+        const updatedCaseTypes = get().caseTypes.map((ct) => ({
+          ...ct,
+          count: allCases.filter((c) => c.caseType === ct.id).length,
+        }));
 
-      if (newCase.studentEmail) {
-        emailService.notifyCaseCreated(caseId, newCase.studentEmail, newCase.studentName);
+        set({
+          cases: allCases,
+          recentCases,
+          caseTypes: updatedCaseTypes,
+          loading: false,
+        });
+      },
+      (error) => {
+        console.error("Error fetching cases:", error);
+        set({ loading: false });
       }
+    );
+  } catch (error) {
+    console.error("Error setting up fetchCases listener:", error);
+    set({ loading: false });
+  }
+
+  return; // satisfies Promise<void>
+},
+
+
+// Add new case
+ addCase: async (newCase: NewCase) => {
+  try {
+    const caseId = await generateCaseId();
+    const investigators = ["Dr. Smith", "Prof. Johnson", "Mrs. Lee"];
+
+    const caseData: Omit<Case, "id"> = {
+      caseNumber: caseId,
+      ...newCase,
+      assignedInvestigator: newCase.assignedInvestigator || investigators[0],
+      status: "active",
+      createdAt: new Date().toISOString(),
+      media: null,
+    };
+
+    // Let Firestore assign the doc ID
+    const caseRef = await addDoc(collection(db, "cases"), caseData);
+
+    // Save doc ID separately in state so you can use it for updates
+    const newCaseWithId: Case = { ...caseData, id: caseRef.id };
+
+    if (newCase.studentEmail) {
+      emailService.notifyCaseCreated(caseId, newCase.studentEmail, newCase.studentName);
+    }
+
+    set((state) => ({
+      cases: [newCaseWithId, ...state.cases],
+      recentCases: [newCaseWithId, ...state.cases].slice(0, 10),
+    }));
+
+    // Upload media if exists
+    if (newCase.media) {
+      const mediaUrl = await uploadToCloudinary(newCase.media);
+      await updateDoc(caseRef, { media: mediaUrl });
 
       set((state) => ({
-        cases: [caseData, ...state.cases],
-        recentCases: [caseData, ...state.cases].slice(0, 10),
+        cases: state.cases.map((c) =>
+          c.id === caseRef.id ? { ...c, media: mediaUrl } : c
+        ),
       }));
-
-      // Upload media using centralized function
-      if (newCase.media) {
-        const mediaUrl = await uploadToCloudinary(newCase.media);
-        await updateDoc(caseRef, { media: mediaUrl });
-        set((state) => ({
-          cases: state.cases.map((c) =>
-            c.id === caseId ? { ...c, media: mediaUrl } : c
-          ),
-        }));
-      }
-    } catch (error) {
-      console.error("Error adding case:", error);
     }
-    set({ isCreateCaseModalOpen: false });
-  },
+  } catch (error) {
+    console.error("Error adding case:", error);
+  }
+
+  set({ isCreateCaseModalOpen: false });
+},
+
 
   // Update case
   updateCase: async (

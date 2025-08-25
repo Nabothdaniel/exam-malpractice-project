@@ -7,22 +7,7 @@ import {
   User as FirebaseUser,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: "superadmin" | "admin" | "investigator" | "viewer";
-}
-
-interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
-  userProfile: User | null; // 🔹 separate profile state
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;
-  fetchUserProfile: () => Promise<void>; // 🔹 auto-fetch for logged-in user
-}
+import type { AuthState,User } from "@/types";
 
 export const useAuthStore = create<AuthState>()(
   persist(

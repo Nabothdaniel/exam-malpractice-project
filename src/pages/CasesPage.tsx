@@ -155,7 +155,7 @@ const CasesPage = () => {
               <tbody>
                 {filteredCases.map((case_) => (
                   <tr key={case_.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">{case_.id}</td>
+                    <td className="px-6 py-4">{case_.caseNumber}</td>
                     <td className="px-6 py-4">{case_.studentName}</td>
                     <td className="px-6 py-4">{case_.caseType}</td>
                     <td className="px-6 py-4">

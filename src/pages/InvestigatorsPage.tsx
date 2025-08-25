@@ -1,67 +1,73 @@
 "use client"
 
-import { useState } from "react"
-import { FiSearch, FiFilter, FiDownload, FiEye, FiEdit, FiPlus, FiUser, FiFileText } from "react-icons/fi"
+import { useEffect, useState } from "react"
+import {
+  FiSearch,
+  FiFilter,
+  FiDownload,
+  FiEye,
+  FiEdit,
+  FiPlus,
+  FiUser,
+  FiFileText,
+} from "react-icons/fi"
+import {
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+} from "firebase/firestore"
+import { db } from "../firebase/firebase" 
+import AddInvestigatorModal from "../components/AddInvestigatorModal" // adjust path
+
+interface Investigator {
+  id: string
+  name: string
+  email: string
+  phone?: string
+  role?: string
+  department: string
+  specialization: string
+  activeCases: number
+  resolvedCases: number
+  totalCases: number
+  status: "active" | "inactive"
+  joinDate: string
+  avatar?: string
+}
 
 const InvestigatorsPage = () => {
+  const [investigators, setInvestigators] = useState<Investigator[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock investigators data
-  const investigators = [
-    {
-      id: "INV001",
-      name: "Dr. Sarah Wilson",
-      email: "sarah.wilson@university.edu",
-      department: "Academic Integrity Office",
-      specialization: "Cheating & Fraud",
-      activeCases: 5,
-      resolvedCases: 23,
-      totalCases: 28,
-      status: "active",
-      joinDate: "2022-03-15",
-      avatar: "/female-investigator.png",
-    },
-    {
-      id: "INV002",
-      name: "Prof. Mike Davis",
-      email: "mike.davis@university.edu",
-      department: "Computer Science",
-      specialization: "Technical Violations",
-      activeCases: 3,
-      resolvedCases: 18,
-      totalCases: 21,
-      status: "active",
-      joinDate: "2021-09-10",
-      avatar: "/male-investigator.png",
-    },
-    {
-      id: "INV003",
-      name: "Dr. Emily Brown",
-      email: "emily.brown@university.edu",
-      department: "Student Affairs",
-      specialization: "Identity Verification",
-      activeCases: 2,
-      resolvedCases: 15,
-      totalCases: 17,
-      status: "active",
-      joinDate: "2023-01-20",
-      avatar: "/female-investigator-2.png",
-    },
-    {
-      id: "INV004",
-      name: "Dr. James Wilson",
-      email: "james.wilson@university.edu",
-      department: "Academic Integrity Office",
-      specialization: "Plagiarism Detection",
-      activeCases: 0,
-      resolvedCases: 12,
-      totalCases: 12,
-      status: "inactive",
-      joinDate: "2020-05-08",
-      avatar: "/investigator-male-2.png",
-    },
-  ]
+  // Listen to investigators in Firestore
+  useEffect(() => {
+    try {
+      const q = query(collection(db, "investigators"), orderBy("createdAt", "desc"))
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const list: Investigator[] = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as Investigator[]
+          setInvestigators(list)
+          setError(null)
+        },
+        (err) => {
+          console.error("Error fetching investigators:", err)
+          setError("Failed to fetch investigators. Please try again later.")
+        }
+      )
+      return () => unsubscribe()
+    } catch (err) {
+      console.error("Firestore listener error:", err)
+      setError("An unexpected error occurred.")
+    }
+  }, [])
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -95,13 +101,23 @@ const InvestigatorsPage = () => {
                 <FiDownload className="w-4 h-4 mr-2" />
                 Export Report
               </button>
-              <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
                 <FiPlus className="w-4 h-4 mr-2" />
                 Add Investigator
               </button>
             </div>
           </div>
         </div>
+
+        {/* Error Banner */}
+        {error && (
+          <div className="mb-4 p-3 rounded-md bg-red-100 text-red-800 border border-red-200">
+            {error}
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -137,7 +153,7 @@ const InvestigatorsPage = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Active Cases</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {investigators.reduce((sum, i) => sum + i.activeCases, 0)}
+                  {investigators.reduce((sum, i) => sum + (i.activeCases || 0), 0)}
                 </p>
               </div>
             </div>
@@ -150,7 +166,7 @@ const InvestigatorsPage = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Resolved Cases</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {investigators.reduce((sum, i) => sum + i.resolvedCases, 0)}
+                  {investigators.reduce((sum, i) => sum + (i.resolvedCases || 0), 0)}
                 </p>
               </div>
             </div>
@@ -236,26 +252,26 @@ const InvestigatorsPage = () => {
                         </div>
                       </div>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{investigator.department}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{investigator.specialization}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{investigator.department}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{investigator.specialization}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">Total: {investigator.totalCases}</div>
+                      <div className="text-sm text-gray-900">Total: {investigator.totalCases || 0}</div>
                       <div className="text-sm text-gray-500">
-                        Active: {investigator.activeCases} | Resolved: {investigator.resolvedCases}
+                        Active: {investigator.activeCases || 0} | Resolved: {investigator.resolvedCases || 0}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(investigator.status).className}`}
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          getStatusBadge(investigator.status).className
+                        }`}
                       >
                         {getStatusBadge(investigator.status).label}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{investigator.joinDate}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {investigator.joinDate || "-"}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <button className="text-blue-600 hover:text-blue-900">
@@ -268,11 +284,21 @@ const InvestigatorsPage = () => {
                     </td>
                   </tr>
                 ))}
+                {filteredInvestigators.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-6 text-center text-gray-500">
+                      No investigators found.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
+
+      {/* Modal */}
+      <AddInvestigatorModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   )
 }
