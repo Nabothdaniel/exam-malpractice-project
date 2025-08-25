@@ -1,9 +1,10 @@
 
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { FiX, FiUser, FiFileText, FiAlertTriangle, FiCamera, FiMail, FiHash } from "react-icons/fi"
 import { useCaseStore } from "../store/caseStore"
 import { toast } from "react-toastify"
+import { useInvestigatorsStore } from "@/store/investigatorStore"
 
 const CreateCaseModal = () => {
   const { isCreateCaseModalOpen, closeCreateCaseModal, addCase, caseTypes } = useCaseStore()
@@ -24,7 +25,11 @@ const CreateCaseModal = () => {
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const investigators = ["Dr. Sarah Wilson", "Prof. Mike Davis", "Dr. Emily Brown", "Dr. James Wilson"]
+  const { investigators, fetchInvestigators } = useInvestigatorsStore()
+
+  useEffect(() => {
+    fetchInvestigators()
+  }, [])
 
   const validateStep = (currentStep: number) => {
     const newErrors: Record<string, string> = {}
@@ -66,7 +71,7 @@ const CreateCaseModal = () => {
         matricNumber: "",
         studentEmail: "",
         department: "",
-        level:"",
+        level: "",
         caseType: "",
         description: "",
         priority: "medium",
@@ -191,7 +196,7 @@ const CreateCaseModal = () => {
                   {errors.department && <p className="mt-1 text-sm text-red-600">{errors.department}</p>}
                 </div>
 
-                  {/* Level */}
+                {/* Level */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Level *</label>
                   <input
@@ -274,9 +279,12 @@ const CreateCaseModal = () => {
                     >
                       <option value="">Auto-assign</option>
                       {investigators.map((inv) => (
-                        <option key={inv} value={inv}>{inv}</option>
+                        <option key={inv.id} value={inv.name}>
+                          {inv.name} — {inv.department}
+                        </option>
                       ))}
                     </select>
+
                     <p className="mt-1 text-sm text-gray-500">Leave empty for automatic assignment</p>
                   </div>
 

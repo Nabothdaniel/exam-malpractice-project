@@ -1,15 +1,12 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { FiPlus } from "react-icons/fi"
-import type { CaseType, Case } from "../types"
+import type { CaseType, } from "../types"
 import { getStatusBadge } from "@/utils/helperFunctions"
+import { useCaseStore } from "@/store/caseStore"
 
-interface CaseCardsProps {
-  caseTypes: CaseType[]
-  cases: Case[]
-  onAddCaseType: (newCaseType: Partial<CaseType>) => void
-}
 
-const CaseCards: React.FC<CaseCardsProps> = ({ caseTypes, cases, onAddCaseType }) => {
+
+const CaseCards: React.FC = () => {
   const [selectedCaseType, setSelectedCaseType] = useState<CaseType | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isAddTypeModalOpen, setIsAddTypeModalOpen] = useState(false)
@@ -19,6 +16,20 @@ const CaseCards: React.FC<CaseCardsProps> = ({ caseTypes, cases, onAddCaseType }
     description: "",
     status: "active",
   })
+
+  const { addCaseType } = useCaseStore()
+  const caseStore = useCaseStore();
+  const caseTypes = caseStore.caseTypes;
+  const cases = caseStore.cases;
+
+  console.log("cases:", cases);
+  console.log("caseTypes:", caseTypes);
+  console.log("selectedCaseType:", selectedCaseType);
+
+
+  useEffect(() => {
+    caseStore.fetchCaseTypes(); // fetches case types from Firebase on mount
+  }, []);
 
   const handleCardClick = (caseType: CaseType) => {
     setSelectedCaseType(caseType)
@@ -34,11 +45,25 @@ const CaseCards: React.FC<CaseCardsProps> = ({ caseTypes, cases, onAddCaseType }
 
   const handleAddTypeSubmit = () => {
     if (newCaseType.title && newCaseType.scope && newCaseType.description) {
-      onAddCaseType(newCaseType)
-      setNewCaseType({ title: "", scope: "", description: "", status: "active" })
-      setIsAddTypeModalOpen(false)
+      const id = `caseType_${Date.now()}`; // simple unique ID
+      const color =
+        newCaseType.status === "active"
+          ? "bg-green-100 text-green-700"
+          : "bg-gray-100 text-gray-700";
+
+      const newType = {
+        ...newCaseType,
+        id,
+        count: 0,
+        color,
+      };
+
+      addCaseType(newType); // update store + Firebase
+      setNewCaseType({ title: "", scope: "", description: "", status: "active" });
+      setIsAddTypeModalOpen(false);
     }
-  }
+  };
+
 
   const filteredCases = selectedCaseType
     ? cases.filter((c) => c.caseType === selectedCaseType.id)
@@ -90,7 +115,7 @@ const CaseCards: React.FC<CaseCardsProps> = ({ caseTypes, cases, onAddCaseType }
       {/* Add Case Type Modal */}
       {isAddTypeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-700/50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-2 sm:mx-5">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-2 sm:mx-10">
             <div className="flex justify-between items-center border-b border-gray-300 pb-3 mb-4">
               <h2 className="text-xl font-semibold text-gray-800">Add New Case Type</h2>
               <button
@@ -195,28 +220,26 @@ const CaseCards: React.FC<CaseCardsProps> = ({ caseTypes, cases, onAddCaseType }
                         <td className="px-4 py-3 text-sm text-gray-700 max-w-xs truncate">{caseItem.description}</td>
                         <td className="px-4 py-3">
                           <span
-                            className={`px-2 py-1 text-xs rounded-full font-medium ${
-                              caseItem.priority === "high"
+                            className={`px-2 py-1 text-xs rounded-full font-medium ${caseItem.priority === "high"
                                 ? "bg-red-200 text-red-800"
                                 : caseItem.priority === "medium"
                                   ? "bg-yellow-200 text-yellow-800"
                                   : "bg-green-200 text-green-800"
-                            }`}
+                              }`}
                           >
                             {caseItem.priority}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`px-2 py-1 text-xs rounded-full font-medium ${
-                              caseItem.status === "active"
+                            className={`px-2 py-1 text-xs rounded-full font-medium ${caseItem.status === "active"
                                 ? "bg-blue-200 text-blue-800"
                                 : caseItem.status === "pending"
                                   ? "bg-yellow-200 text-yellow-800"
                                   : caseItem.status === "resolved"
                                     ? "bg-green-200 text-green-800"
                                     : "bg-gray-200 text-gray-800"
-                            }`}
+                              }`}
                           >
                             {caseItem.status}
                           </span>

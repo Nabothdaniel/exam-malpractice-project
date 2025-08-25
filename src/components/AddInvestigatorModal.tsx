@@ -3,11 +3,11 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase/firebase";
 
 interface investigatorProps {
-    isOpen : boolean;
-    onClose:()=> void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-const AddInvestigatorModal = ({ isOpen, onClose }:investigatorProps) => {
+const AddInvestigatorModal = ({ isOpen, onClose }: investigatorProps) => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -17,7 +17,9 @@ const AddInvestigatorModal = ({ isOpen, onClose }:investigatorProps) => {
   });
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
@@ -52,7 +54,7 @@ const AddInvestigatorModal = ({ isOpen, onClose }:investigatorProps) => {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/20 z-50">
-      <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-md">
+      <div className="bg-white p-6 mx-4 rounded-xl shadow-xl w-full max-w-md">
         <h2 className="text-xl font-semibold mb-4 text-gray-900">
           Add Investigator
         </h2>
@@ -65,7 +67,7 @@ const AddInvestigatorModal = ({ isOpen, onClose }:investigatorProps) => {
             value={formData.name}
             onChange={handleChange}
             required
-            className="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-indigo-500"
+            className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:border-gray-500 focus:ring focus:ring-gray-300"
           />
 
           <input
@@ -75,7 +77,7 @@ const AddInvestigatorModal = ({ isOpen, onClose }:investigatorProps) => {
             value={formData.email}
             onChange={handleChange}
             required
-            className="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-indigo-500"
+            className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:border-gray-500 focus:ring focus:ring-gray-300"
           />
 
           <input
@@ -84,7 +86,7 @@ const AddInvestigatorModal = ({ isOpen, onClose }:investigatorProps) => {
             placeholder="Phone Number"
             value={formData.phone}
             onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-indigo-500"
+            className="w-full  rounded-lg px-3 py-2 border-2 border-gray-300 focus:border-gray-500 focus:ring focus:ring-gray-300"
           />
 
           <input
@@ -93,14 +95,14 @@ const AddInvestigatorModal = ({ isOpen, onClose }:investigatorProps) => {
             placeholder="Department"
             value={formData.department}
             onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-indigo-500"
+            className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:border-gray-500 focus:ring focus:ring-gray-300"
           />
 
           <select
             name="role"
             value={formData.role}
             onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-indigo-500"
+            className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:border-gray-500 focus:ring focus:ring-gray-300"
           >
             <option value="Lead">Lead</option>
             <option value="Assistant">Assistant</option>
@@ -119,7 +121,7 @@ const AddInvestigatorModal = ({ isOpen, onClose }:investigatorProps) => {
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
               {loading ? "Saving..." : "Save"}
             </button>

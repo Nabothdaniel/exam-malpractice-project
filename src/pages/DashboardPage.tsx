@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { FiPlus, FiClock } from "react-icons/fi"
+import { FiPlus } from "react-icons/fi"
 import { gsap } from "gsap"
 import { useCaseStore } from "../store/caseStore"
 import CaseCards from "../components/CasesCards"
@@ -24,7 +24,7 @@ const DashboardPage = () => {
     <div className="p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex flex-col md:flex-row  items-center justify-between">
           <div>
             <h1 className="text-xl md:text-2xl font-semibold text-gray-900">Case Management</h1>
             <p className="text-sm md:text-md text-gray-600 mt-1">
@@ -33,7 +33,7 @@ const DashboardPage = () => {
           </div>
           <button
             onClick={openCreateCaseModal}
-            className="flex items-center px-3 py-1.5 md:px-4 md:py-2 
+            className=" w-full md:w-auto justify-center flex items-center mt-5 md:mt-0 px-2 py-3 md:px-4 md:py-2 
              text-sm md:text-base 
              bg-blue-600 text-white rounded-md 
              hover:bg-blue-700 transition"
@@ -44,41 +44,68 @@ const DashboardPage = () => {
         </div>
 
         {/* Case Types */}
-        <CaseCards caseTypes={caseTypes} cases={cases} />
+        <CaseCards/>
 
-        {/* Recent Updates (unchanged) */}
-        <div className="bg-white rounded-lg border mt-8 border-gray-200 shadow-sm">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-              <FiClock className="w-5 h-5" />
-              <span>Recent Case Updates</span>
-            </h2>
-          </div>
-          <div className="p-6">
-            {recentUpdates.length === 0 ? (
-              <p className="text-gray-500 text-center">No recent updates</p>
-            ) : (
-              <div className="space-y-4">
-                {recentUpdates.map((update) => (
-                  <div
-                    key={update.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                  >
-                    <div>
-                      <p className="font-medium text-gray-900">{update.case}</p>
-                      <p className="text-sm text-gray-600">
-                        {update.student} - {update.action}
-                      </p>
-                    </div>
-                    <span className="inline-block px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 border rounded-full">
-                      {update.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        {/* Recent Updates  */}
+        <div className="bg-white rounded-2xl border border-gray-200 mt-8 shadow-sm overflow-x-auto">
+          <table className="w-full min-w-[600px]">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Case</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Student</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Action</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Level</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Time</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentUpdates.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500 italic">
+                    No recent updates
+                  </td>
+                </tr>
+              ) : (
+                recentUpdates.map((update) => (
+                  <tr key={update.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-gray-900">{update.case}</td>
+                    <td className="px-6 py-4 text-gray-900">{update.student}</td>
+                    <td className="px-6 py-4 text-gray-900">{update.action}</td>
+                    <td className="px-6 py-4 text-gray-900">{update.level}</td>
+                    <td className="px-6 py-4 text-gray-900">
+                      {new Date(update.time).toLocaleString(undefined, {
+                        weekday: "short",
+                        year: "numeric",
+                        month: "short",
+                      })}
+                    </td>
+
+                    <td className="px-6 py-4">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${update.status === "resolved"
+                            ? "text-green-700 bg-green-100"
+                            : update.status === "pending"
+                              ? "text-yellow-700 bg-yellow-100"
+                              : update.status === "investigating"
+                                ? "text-blue-700 bg-blue-100"
+                                : "text-gray-700 bg-gray-100"
+                          }`}
+                      >
+                        {update.status.charAt(0).toUpperCase() + update.status.slice(1)}
+                      </span>
+
+
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
+
+
+
       </div>
     </div>
   )

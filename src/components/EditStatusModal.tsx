@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FiX } from "react-icons/fi";
 import { toast } from "react-toastify";
 import { useCaseStore } from "../store/caseStore";
+import { useInvestigatorsStore } from "@/store/investigatorStore"
 
 interface EditCaseModalProps {
   selectedCaseId: string;
@@ -29,7 +30,12 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const investigators = ["Dr. Sarah Wilson", "Prof. Mike Davis", "Dr. Emily Brown", "Dr. James Wilson"];
+
+  const { investigators, fetchInvestigators } = useInvestigatorsStore()
+
+  useEffect(() => {
+    fetchInvestigators()
+  }, [])
 
   // Pre-fill form data when modal opens
   useEffect(() => {
@@ -87,7 +93,7 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
     };
 
     try {
-        console.log(selectedCase.id)
+      console.log(selectedCase.id)
       await updateCase(selectedCase.id, updates);
       toast.success("Case updated successfully ✅");
       onClose();
@@ -173,12 +179,12 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
             <select
               value={formData.assignedInvestigator}
               onChange={(e) => handleInputChange("assignedInvestigator", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Auto-assign</option>
               {investigators.map((inv) => (
-                <option key={inv} value={inv}>
-                  {inv}
+                <option key={inv.id} value={inv.name}>
+                  {inv.name} — {inv.department}
                 </option>
               ))}
             </select>

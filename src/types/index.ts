@@ -26,7 +26,7 @@ export interface CaseType {
 
 export interface Case {
   id: string;
-  caseNumber:string;
+  caseNumber: string;
   studentName: string;
   matricNumber: string;
   studentEmail: string;
@@ -87,6 +87,7 @@ export interface CaseStore {
 
   fetchCases: () => Promise<void>;
   addCase: (newCase: NewCase) => Promise<void>;
+  fetchCaseTypes: () => Promise<void>;
 
   // ✅ Updated method signature:
   updateCase: (
@@ -99,25 +100,25 @@ export interface CaseStore {
   openCreateCaseModal: () => void;
   closeCreateCaseModal: () => void;
   getCaseTypeById: (id: string) => { id: string; title: string } | undefined;
+
+  // ✅ New method for adding case types
+  addCaseType: (newType: Partial<CaseStore["caseTypes"][0]>) => Promise<void>;
 }
 
 export interface Investigator {
-  id: string
-  name: string
-  email: string
-  department: string
-  role: "investigator" | "admin" // if needed
-  assignedCases?: string[] // array of Case IDs (optional)
+  id: string;
+  name: string;
+  email: string;
+  department: string;
+  role: "investigator" | "admin"; // if needed
+  assignedCases?: string[]; // array of Case IDs (optional)
 }
 
 export interface Student {
-  id: string
-  name: string
-  matricNumber: string
-  email: string
-  department: string
-  cases?: string[] // array of Case IDs
+  id: string;
+  name: string;
+  matricNumber: string;
+  email: string;
+  department: string;
+  cases?: string[]; // array of Case IDs
 }
-
-
-
