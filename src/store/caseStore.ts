@@ -8,12 +8,14 @@ import {
   query,
   orderBy,
   onSnapshot,
+  getDocs,
+  where,
   QueryDocumentSnapshot
 } from "firebase/firestore";
 import { db } from "../firebase/firebase";
 import { generateCaseId } from "../utils/helperFunctions";
 import { emailService } from "../services/emailService";
-import type { Case, CaseUpdate, NewCase, CaseStore,CaseType } from "@/types";
+import type { Case, CaseUpdate, NewCase, CaseStore,CaseType,Student } from "@/types";
 import { uploadToCloudinary } from "../utils/cloudinary"; 
 
 const mapDocToCase = (docSnap: QueryDocumentSnapshot): Case => {
@@ -118,9 +120,9 @@ export const useCaseStore = create<CaseStore>((set, get) => ({
             student: c.studentName,
             action: "Created",
             time: c.createdAt,
-            level: c.level ?? "", // Provide a default or adjust as needed
-            status: c.status ?? "active", // Provide a default or adjust as needed
-          })), // ✅ map recentUpdates to CaseUpdate[]
+            level: c.level ?? "", 
+            status: c.status ?? "active", 
+          })), //  map recentUpdates to CaseUpdate[]
           caseTypes: updatedCaseTypes,
           loading: false,
         });
@@ -141,33 +143,94 @@ export const useCaseStore = create<CaseStore>((set, get) => ({
 // Add new case
 addCase: async (newCase: NewCase) => {
   try {
-    const caseId =  generateCaseId();
-    const investigators = ["Dr. Smith", "Prof. Johnson", "Mrs. Lee"];
+    const caseId = generateCaseId();
 
+    // 1️⃣ Find or create student
+    const studentQuery = query(
+      collection(db, "students"),
+      where("email", "==", newCase.studentEmail)
+    );
+    const studentSnapshot = await getDocs(studentQuery);
+
+    let studentRef;
+    let studentData: Student | null = null;
+
+    if (!studentSnapshot.empty) {
+      studentRef = studentSnapshot.docs[0].ref;
+      studentData = { id: studentSnapshot.docs[0].id, ...studentSnapshot.docs[0].data() } as Student;
+    } else {
+      studentRef = await addDoc(collection(db, "students"), {
+        name: newCase.studentName,
+        email: newCase.studentEmail,
+        program: newCase.program || "",
+        level: newCase.level || "",
+        gender: newCase.gender || "other",
+        createdAt: new Date().toISOString(),
+        cases: [],
+        caseStats: {
+          total: 0,
+          active: 0,
+          resolved: 0,
+          riskLevel: "low",
+          lastIncident: null,
+        },
+      });
+    }
+
+    // 2️⃣ Create the case
     const caseData: Omit<Case, "id"> = {
-      caseNumber: caseId,
-      ...newCase,
-      assignedInvestigator: newCase.assignedInvestigator || investigators[0],
-      status: "active",
-      createdAt: new Date().toISOString(),
-      media: null,
-    };
+  caseNumber: caseId,
+  studentId: studentRef.id,
+  studentName: newCase.studentName,
+  studentEmail: newCase.studentEmail,
+  assignedInvestigator: newCase.assignedInvestigator || "none",
+  status: "active",
+  createdAt: new Date().toISOString(),
+  media: null,
+  riskLevel: newCase.riskLevel || "low",
+  lastIncident: new Date().toISOString(),
+  level: newCase.level || "",
+  matricNumber: newCase.matricNumber || "",
+  department: newCase.department || "",
+  program: newCase.program || "",
+  caseType: newCase.caseType || "",
+  gender: newCase.gender || "other",
+  description: newCase.description || "",
+  priority: newCase.priority || "normal",
+};
+
 
     const caseRef = await addDoc(collection(db, "cases"), caseData);
-
     const newCaseWithId: Case = { ...caseData, id: caseRef.id };
 
+    // 3️⃣ Update Student’s cases + stats
+    const updatedCases = studentData?.cases ? [...studentData.cases, caseRef.id] : [caseRef.id];
+    const updatedStats = {
+      total: (studentData?.caseStats.total || 0) + 1,
+      active: (studentData?.caseStats.active || 0) + 1,
+      resolved: studentData?.caseStats.resolved || 0,
+      riskLevel: newCase.riskLevel || "low",
+      lastIncident: newCaseWithId.lastIncident,
+    };
+
+    await updateDoc(studentRef, {
+      cases: updatedCases,
+      caseStats: updatedStats,
+    });
+
+    // 4️⃣ Send notification
     if (newCase.studentEmail) {
       emailService.notifyCaseCreated(caseId, newCase.studentEmail, newCase.studentName);
     }
 
+    // 5️⃣ Update local state
     set((state) => {
-      const updatedCases = [newCaseWithId, ...state.cases];
-      const updatedRecent = updatedCases.slice(0, 10);
+      const allCases = [newCaseWithId, ...state.cases];
+      const recent = allCases.slice(0, 10);
       return {
-        cases: updatedCases,
-        recentCases: updatedRecent,
-        recentUpdates: updatedRecent.map((c) => ({
+        cases: allCases,
+        recentCases: recent,
+        recentUpdates: recent.map((c) => ({
           id: c.id,
           case: c.caseNumber,
           student: c.studentName,
@@ -179,10 +242,10 @@ addCase: async (newCase: NewCase) => {
       };
     });
 
+    // 6️⃣ Upload media if provided
     if (newCase.media) {
       const mediaUrl = await uploadToCloudinary(newCase.media);
       await updateDoc(caseRef, { media: mediaUrl });
-
       set((state) => ({
         cases: state.cases.map((c) =>
           c.id === caseRef.id ? { ...c, media: mediaUrl } : c
@@ -195,6 +258,7 @@ addCase: async (newCase: NewCase) => {
 
   set({ isCreateCaseModalOpen: false });
 },
+
 
   // Update case
   updateCase: async (

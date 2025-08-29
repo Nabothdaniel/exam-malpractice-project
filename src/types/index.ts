@@ -28,15 +28,20 @@ export interface Case {
   id: string;
   caseNumber: string;
   studentName: string;
+  studentId: string;
   matricNumber: string;
   studentEmail: string;
   department: string;
   caseType: string;
   level: string;
+  program: string;
+  gender: "male" | "female";
   description: string;
   priority: "low" | "medium" | "high";
   assignedInvestigator: string;
   status: "active" | "pending" | "resolved" | "investigating";
+  riskLevel: "low" | "medium" | "high";
+  lastIncident: string;
   createdAt: string;
   media: string | null;
 }
@@ -59,7 +64,10 @@ export interface NewCase {
   caseType: string;
   description: string;
   level: string;
+  program: string;
+  gender: "male" | "female";
   priority: "low" | "medium" | "high";
+  riskLevel: "low" | "medium" | "high";
   assignedInvestigator: string;
   media: File | null;
 }
@@ -110,15 +118,27 @@ export interface Investigator {
   name: string;
   email: string;
   department: string;
-  role: "investigator" | "admin"; // if needed
-  assignedCases?: string[]; // array of Case IDs (optional)
+  role: "investigator" | "admin";
+  assignedCases?: string[]; // array of Case IDs
 }
 
-export interface Student {
+export type Student = {
   id: string;
   name: string;
-  matricNumber: string;
   email: string;
-  department: string;
-  cases?: string[]; // array of Case IDs
-}
+  program: string;
+  level: string;
+  gender: "male" | "female" | "other";
+  createdAt: string;
+  profileImage?: string;
+
+  //  relationship with cases
+  cases: string[]; // array of caseIds
+  caseStats: {
+    total: number;
+    active: number;
+    resolved: number;
+    riskLevel: "low" | "medium" | "high";
+    lastIncident: string | null;
+  };
+};

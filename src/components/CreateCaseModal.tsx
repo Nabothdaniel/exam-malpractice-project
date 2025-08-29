@@ -5,22 +5,27 @@ import { FiX, FiUser, FiFileText, FiAlertTriangle, FiCamera, FiMail, FiHash } fr
 import { useCaseStore } from "../store/caseStore"
 import { toast } from "react-toastify"
 import { useInvestigatorsStore } from "@/store/investigatorStore"
+import type { NewCase } from "@/types"
 
 const CreateCaseModal = () => {
   const { isCreateCaseModalOpen, closeCreateCaseModal, addCase, caseTypes } = useCaseStore()
   const [step, setStep] = useState(1)
-  const [formData, setFormData] = useState({
-    studentName: "",
-    matricNumber: "",
-    studentEmail: "",
-    department: "",
-    level: "",
-    caseType: "",
-    description: "",
-    priority: "medium" as "low" | "medium" | "high",
-    assignedInvestigator: "",
-    media: null as File | null,
-  })
+  const [formData, setFormData] = useState<NewCase>({
+  studentName: "",
+  matricNumber: "",
+  studentEmail: "",
+  department: "",
+  program: "",
+  level: "",
+  gender: "male", // must initialize with one of the allowed union values
+  caseType: "",
+  description: "",
+  priority: "medium",
+  assignedInvestigator: "",
+  media: null,
+  riskLevel: "low",
+});
+
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -62,21 +67,23 @@ const CreateCaseModal = () => {
 
     try {
       setLoading(true)
-
       await addCase(formData)
 
-      // Reset form
+      //reset form data
       setFormData({
         studentName: "",
         matricNumber: "",
         studentEmail: "",
         department: "",
         level: "",
+        program: "",
+         gender: "" as "male" | "female",
         caseType: "",
         description: "",
         priority: "medium",
         assignedInvestigator: "",
         media: null,
+        riskLevel: "low", // Reset riskLevel as well
       })
       setMediaPreview(null)
       setErrors({})
@@ -133,6 +140,7 @@ const CreateCaseModal = () => {
         {/* Scrollable Form Content */}
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-auto p-6 space-y-6">
           {/* Step 1 */}
+          {/* Step 1 */}
           {step === 1 && (
             <>
               <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
@@ -182,7 +190,6 @@ const CreateCaseModal = () => {
                   {errors.studentEmail && <p className="mt-1 text-sm text-red-600">{errors.studentEmail}</p>}
                 </div>
 
-
                 {/* Department */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Department *</label>
@@ -194,6 +201,19 @@ const CreateCaseModal = () => {
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.department ? "border-red-300" : "border-gray-300"}`}
                   />
                   {errors.department && <p className="mt-1 text-sm text-red-600">{errors.department}</p>}
+                </div>
+
+                {/* Program */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Program *</label>
+                  <input
+                    type="text"
+                    value={formData.program}
+                    onChange={(e) => handleInputChange("program", e.target.value)}
+                    placeholder="Enter student's program (e.g., BSc Computer Science)"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.program ? "border-red-300" : "border-gray-300"}`}
+                  />
+                  {errors.program && <p className="mt-1 text-sm text-red-600">{errors.program}</p>}
                 </div>
 
                 {/* Level */}
@@ -208,9 +228,25 @@ const CreateCaseModal = () => {
                   />
                   {errors.level && <p className="mt-1 text-sm text-red-600">{errors.level}</p>}
                 </div>
+
+                {/* Gender */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
+                  <select
+                    value={formData.gender}
+                    onChange={(e) =>  handleInputChange("gender", e.target.value as "male" | "female" | "other")}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.gender ? "border-red-300" : "border-gray-300"}`}
+                  >
+                    <option value="">Select gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                  {errors.gender && <p className="mt-1 text-sm text-red-600">{errors.gender}</p>}
+                </div>
               </div>
             </>
           )}
+
 
           {/* Step 2 */}
           {step === 2 && (
