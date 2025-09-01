@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react"
 import {
-  FiSearch,
-  FiFilter,
   FiDownload,
   FiEye,
   FiEdit,
@@ -13,6 +11,9 @@ import { collection, onSnapshot, query, orderBy } from "firebase/firestore"
 import { db } from "../firebase/firebase"
 import AddInvestigatorModal from "../components/AddInvestigatorModal"
 import { toast } from "react-toastify"
+import { useExportData } from "@/hooks/useExportData";
+import InvestigatorCasesModal from "@/components/InvestigatorsCaseModal"
+import { useInvestigatorsStore } from "@/store/investigatorStore"
 
 interface Investigator {
   id: string
@@ -31,7 +32,9 @@ interface Case {
   id: string
   assignedInvestigator: string
   status: "active" | "pending" | "resolved"
-  // other fields as needed
+  studentName?: string
+  matricNumber?: string
+  createdAt?: string
 }
 
 const InvestigatorsPage = () => {
@@ -41,6 +44,16 @@ const InvestigatorsPage = () => {
   const [statusFilter, setStatusFilter] = useState("all")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedInvestigator, setSelectedInvestigator] = useState<Investigator | null>(null)
+  const { updateInvestigatorStatus } = useInvestigatorsStore()
+ const [openDropdownId, setOpenDropdownId] = useState<string | null>(null)
+
+  const handleStatusChange = async (id: string, status: "active" | "inactive") => {
+    await updateInvestigatorStatus(id, status)
+    setOpenDropdownId(null) // close after update
+  }
+
+  
 
   // Listen to investigators
   useEffect(() => {
@@ -88,6 +101,20 @@ const InvestigatorsPage = () => {
     return statusConfig[status as keyof typeof statusConfig] || statusConfig.active
   }
 
+  const investigatorColumns = [
+    { header: "Name", accessor: "name" },
+    { header: "Email", accessor: "email" },
+    { header: "Department", accessor: "department" },
+    { header: "Specialization", accessor: "specialization" },
+    { header: "Status", accessor: "status" },
+    { header: "Total Cases", accessor: "totalCases" },
+    { header: "Active Cases", accessor: "activeCases" },
+    { header: "Resolved Cases", accessor: "resolvedCases" },
+  ];
+
+
+
+
   // Compute case stats dynamically
   const enhancedInvestigators = investigators.map((inv) => {
     const assigned = cases.filter((c) => c.assignedInvestigator === inv.name)
@@ -101,6 +128,14 @@ const InvestigatorsPage = () => {
     }
   })
 
+
+  // 🔹 Hook for export
+  const { exportToExcel } = useExportData(
+    investigatorColumns,
+    enhancedInvestigators,
+    "investigators"
+  );
+
   const filteredInvestigators = enhancedInvestigators.filter((inv) => {
     const matchesSearch =
       inv.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -109,6 +144,10 @@ const InvestigatorsPage = () => {
     const matchesStatus = statusFilter === "all" || inv.status === statusFilter
     return matchesSearch && matchesStatus
   })
+
+  const assignedCases = selectedInvestigator
+    ? cases.filter((c) => c.assignedInvestigator === selectedInvestigator.name)
+    : []
 
   return (
     <div className="p-6">
@@ -121,9 +160,12 @@ const InvestigatorsPage = () => {
               <p className="text-gray-600 mt-1">Manage investigation team and track their case assignments</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
-              <button className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
+              <button
+                onClick={exportToExcel}
+                className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
                 <FiDownload className="w-4 h-4 mr-2" />
-                Export Report
+                Export Excel
               </button>
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -137,7 +179,7 @@ const InvestigatorsPage = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-8">
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex items-center">
               <div className="p-2 bg-blue-100 rounded-lg">
@@ -146,19 +188,6 @@ const InvestigatorsPage = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Investigators</p>
                 <p className="text-2xl font-semibold text-gray-900">{investigators.length}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <FiUser className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Active</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {investigators.filter((i) => i.status === "active").length}
-                </p>
               </div>
             </div>
           </div>
@@ -189,40 +218,6 @@ const InvestigatorsPage = () => {
             </div>
           </div>
         </div>
-
-        {/* Filters and Search */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Search investigators by name, ID, or specialization..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-              <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
-                <FiFilter className="w-4 h-4 mr-2" />
-                Filter
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* Investigators Table */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -280,14 +275,39 @@ const InvestigatorsPage = () => {
                         {getStatusBadge(inv.status).label}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium relative">
                       <div className="flex space-x-2">
-                        <button className="text-blue-600 hover:text-blue-900">
+                        {/* 👁 View Button */}
+                        <button
+                          className="text-blue-600 hover:text-blue-900"
+                          onClick={() => setSelectedInvestigator(inv)}
+                        >
                           <FiEye className="w-4 h-4" />
                         </button>
-                        <button className="text-gray-600 hover:text-gray-900">
+
+                        {/* ✏️ Edit / Status Dropdown */}
+                        <button
+                          className="text-gray-600 hover:text-gray-900"
+                          onClick={() =>
+                            setOpenDropdownId(openDropdownId === inv.id ? null : inv.id)
+                          }
+                        >
                           <FiEdit className="w-4 h-4" />
                         </button>
+
+                        {/* ✅ Proper dropdown - only one opens at a time */}
+                        {openDropdownId === inv.id && (
+                          <select
+                            className="absolute top-8 right-0 border rounded-md px-2 py-1 text-sm shadow-md"
+                            value={inv.status}
+                            onChange={(e) =>
+                              handleStatusChange(inv.id, e.target.value as "active" | "inactive")
+                            }
+                          >
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                          </select>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -305,7 +325,16 @@ const InvestigatorsPage = () => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal for Cases */}
+      {selectedInvestigator && (
+        <InvestigatorCasesModal
+          investigator={selectedInvestigator}
+          cases={assignedCases} // filter them before passing
+          onClose={() => setSelectedInvestigator(null)}
+        />
+      )}
+
+      {/* Add Investigator Modal */}
       <AddInvestigatorModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   )

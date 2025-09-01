@@ -126,6 +126,7 @@ export type Student = {
   id: string;
   name: string;
   email: string;
+  matricNumber: string;
   program: string;
   level: string;
   gender: "male" | "female" | "other";

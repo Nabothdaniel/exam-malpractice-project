@@ -1,7 +1,0 @@
-[
-  {
-    "origin": ["http://localhost:5173", "exam-malpractice-project.vercel.app"],
-    "method": ["GET", "POST", "PUT", "HEAD", "OPTIONS"],
-    "maxAgeSeconds": 3600
-  }
-]

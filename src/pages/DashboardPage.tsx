@@ -9,7 +9,7 @@ const DashboardPage = () => {
   useEffect(() => {
     setPageTitle("Dashboard")
   }, [])
-  const { caseTypes, cases, recentUpdates, openCreateCaseModal, fetchCases, } = useCaseStore()
+  const {  recentUpdates, openCreateCaseModal, fetchCases, } = useCaseStore()
 
   useEffect(() => {
     fetchCases()

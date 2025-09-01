@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore"
 import { db } from "@/firebase/firebase"
 import type { Case } from "@/types"
+
 // Investigator type
 export interface Investigator {
   id: string
@@ -32,6 +33,7 @@ interface InvestigatorStore {
   fetchInvestigators: () => void
   addInvestigator: (data: Omit<Investigator, "id" | "activeCases" | "resolvedCases" | "totalCases">) => Promise<void>
   updateInvestigatorStats: (cases: Case[]) => Promise<void>
+  updateInvestigatorStatus: (id: string, status: "active" | "inactive") => Promise<void> // 🔹 new
 }
 
 export const useInvestigatorsStore = create<InvestigatorStore>((set, get) => ({
@@ -43,7 +45,6 @@ export const useInvestigatorsStore = create<InvestigatorStore>((set, get) => ({
     set({ loading: true })
     const q = collection(db, "investigators")
 
-    // snapshot listener (unsubscribe on signout if needed)
     onSnapshot(q, (snapshot) => {
       const data: Investigator[] = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -72,7 +73,6 @@ export const useInvestigatorsStore = create<InvestigatorStore>((set, get) => ({
   // 🔹 Update investigator stats whenever cases change
   updateInvestigatorStats: async (cases: Case[]) => {
     try {
-      // group cases by assignedInvestigator
       const grouped: Record<string, { active: number; resolved: number }> = {}
 
       cases.forEach((c) => {
@@ -87,7 +87,6 @@ export const useInvestigatorsStore = create<InvestigatorStore>((set, get) => ({
         }
       })
 
-      // update each investigator in Firestore
       const investigators = get().investigators
       await Promise.all(
         investigators.map(async (inv) => {
@@ -101,6 +100,23 @@ export const useInvestigatorsStore = create<InvestigatorStore>((set, get) => ({
       )
     } catch (err) {
       console.error("Error updating investigator stats:", err)
+    }
+  },
+
+  // 🔹 Update investigator status (toggle active/inactive)
+  updateInvestigatorStatus: async (id, status) => {
+    try {
+      const ref = doc(db, "investigators", id)
+      await updateDoc(ref, { status })
+
+      // Optional: update local state immediately
+      set((state) => ({
+        investigators: state.investigators.map((inv) =>
+          inv.id === id ? { ...inv, status } : inv
+        ),
+      }))
+    } catch (err) {
+      console.error("Error updating investigator status:", err)
     }
   },
 }))

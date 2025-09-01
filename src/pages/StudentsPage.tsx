@@ -5,12 +5,11 @@ import {
   FiSearch,
   FiFilter,
   FiDownload,
-  FiEye,
-  FiEdit,
   FiAlertTriangle,
   FiUser,
 } from "react-icons/fi";
-import { useStudentsStore } from "@/store/studentsStore"; 
+import { useStudentsStore } from "@/store/studentsStore";
+import { useExportData } from "@/hooks/useExportData"; 
 
 const StudentsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,6 +45,39 @@ const StudentsPage = () => {
     return matchesSearch && matchesStatus;
   });
 
+  // 🔹 Prepare export data
+  const exportData = filteredStudents.map((student) => ({
+    name: student.name,
+    email: student.email,
+    matricNumber: student.matricNumber,
+    program: student.program,
+    level: student.level,
+    casesSummary: `Total: ${student.cases.length}, Active: ${
+      student.cases.filter((c) => c.status === "active").length
+    }, Resolved: ${student.cases.filter((c) => c.status === "resolved").length}`,
+    riskLevel: getRiskBadge(student.riskLevel).label,
+    lastIncident: student.lastIncident || "—",
+  }));
+
+  // 🔹 Define export columns
+  const exportColumns = [
+    { header: "Name", accessor: "name" },
+    { header: "Email", accessor: "email" },
+    { header: "Matric No", accessor: "matricNumber" },
+    { header: "Program", accessor: "program" },
+    { header: "Level", accessor: "level" },
+    { header: "Cases", accessor: "casesSummary" },
+    { header: "Risk Level", accessor: "riskLevel" },
+    { header: "Last Incident", accessor: "lastIncident" },
+  ];
+
+  // 🔹 Hook for export
+  const { exportToExcel, exportToPDF } = useExportData(
+    exportColumns,
+    exportData,
+    "students"
+  );
+
   if (loading) {
     return <p className="p-6 text-gray-600">Loading students...</p>;
   }
@@ -61,10 +93,25 @@ const StudentsPage = () => {
               Manage student profiles and track their case history
             </p>
           </div>
-          <button className="w-full md:w-auto flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
-            <FiDownload className="w-4 h-4 mr-2" />
-            Export Report
-          </button>
+
+          {/* ✅ Export Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={exportToExcel}
+              className="w-full md:w-auto flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              <FiDownload className="w-4 h-4 mr-2" />
+              Export Excel
+            </button>
+
+            <button
+              onClick={exportToPDF}
+              className="w-full md:w-auto flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              <FiDownload className="w-4 h-4 mr-2" />
+              Export PDF
+            </button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -164,9 +211,6 @@ const StudentsPage = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Last Incident
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Actions
-                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -175,18 +219,31 @@ const StudentsPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap flex items-center">
                       <img
                         className="h-10 w-10 rounded-full"
-                        src={student.avatar || "/placeholder.svg"}
-                        alt=""
+                        src={
+                          student.profileImage ||
+                          (student.gender === "male"
+                            ? "/male-student-avatar.png"
+                            : student.gender === "female"
+                            ? "/female-student-avatar.png"
+                            : "/student-avatar.png")
+                        }
+                        alt={student.name}
                       />
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                        <div className="text-sm text-gray-500">{student.email}</div>
-                        <div className="text-sm text-gray-500">{student.matricNumber}</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {student.name}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {student.email}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {student.matricNumber}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{student.program}</div>
-                      <div className="text-sm text-gray-500">{student.level}</div>
+                      <div className="text-sm text-gray-500">{student.level} lv</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
@@ -208,14 +265,6 @@ const StudentsPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {student.lastIncident || "—"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900">
-                        <FiEye className="w-4 h-4" />
-                      </button>
-                      <button className="text-gray-600 hover:text-gray-900">
-                        <FiEdit className="w-4 h-4" />
-                      </button>
                     </td>
                   </tr>
                 ))}
