@@ -69,6 +69,8 @@ export interface NewCase {
   priority: "low" | "medium" | "high";
   riskLevel: "low" | "medium" | "high";
   assignedInvestigator: string;
+   caseTitle:string;
+    actions:string[]
   media: File | null;
 }
 

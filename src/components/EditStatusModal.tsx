@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FiX } from "react-icons/fi";
 import { toast } from "react-toastify";
 import { useCaseStore } from "../store/caseStore";
-import { useInvestigatorsStore } from "@/store/investigatorStore"
+import { useInvestigatorsStore } from "@/store/investigatorStore";
 
 interface EditCaseModalProps {
   selectedCaseId: string;
@@ -12,6 +12,8 @@ interface EditCaseModalProps {
 const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }) => {
   const { cases, updateCase } = useCaseStore();
   const selectedCase = cases.find((c) => c.id === selectedCaseId);
+
+  const { investigators, fetchInvestigators } = useInvestigatorsStore();
 
   const [formData, setFormData] = useState({
     studentName: "",
@@ -24,20 +26,17 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
     priority: "medium" as "low" | "medium" | "high",
     assignedInvestigator: "",
     status: "active" as "active" | "pending" | "resolved" | "investigating",
-    media: null as File | null, // only new uploads
+    action: "",
+    media: null as File | null,
   });
 
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-
-  const { investigators, fetchInvestigators } = useInvestigatorsStore()
-
   useEffect(() => {
-    fetchInvestigators()
-  }, [])
+    fetchInvestigators();
+  }, []);
 
-  // Pre-fill form data when modal opens
   useEffect(() => {
     if (!selectedCase) return;
 
@@ -47,12 +46,13 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
       studentEmail: selectedCase.studentEmail,
       department: selectedCase.department,
       level: selectedCase.level || "",
-      caseType: selectedCase.caseType,
+      caseType: selectedCase.caseTitle,
       description: selectedCase.description,
       priority: selectedCase.priority,
       assignedInvestigator: selectedCase.assignedInvestigator,
       status: selectedCase.status,
-      media: null, // keep null because existing media is already stored
+      action: "",
+      media: null,
     });
 
     setMediaPreview(selectedCase.media || null);
@@ -72,6 +72,16 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
         setMediaPreview(null);
       }
     }
+
+    // Auto-update action when status changes
+    if (field === "status" && value !== selectedCase.status) {
+      const timestamp = new Date().toLocaleString();
+      const actionText = `Status changed from "${selectedCase.status}" to "${value}" at ${timestamp}`;
+      setFormData((prev) => ({
+        ...prev,
+        action: prev.action ? [...prev.action, actionText].join("\n") : actionText,
+      }));
+    }
   };
 
   const handleSave = async () => {
@@ -89,11 +99,11 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
       priority: formData.priority,
       assignedInvestigator: formData.assignedInvestigator,
       status: formData.status,
+      action: formData.action ? formData.action.split("\n") : [],
       media: formData.media instanceof File ? formData.media : null,
     };
 
     try {
-      console.log(selectedCase.id)
       await updateCase(selectedCase.id, updates);
       toast.success("Case updated successfully ✅");
       onClose();
@@ -111,106 +121,159 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Edit Case</h2>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md">
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
+          >
             <FiX className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form */}
         <div className="flex-1 overflow-auto p-6 space-y-6">
-          {/* Student Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              type="text"
-              placeholder="Student Name"
-              value={formData.studentName}
-              onChange={(e) => handleInputChange("studentName", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-            <input
-              type="text"
-              placeholder="Matric Number"
-              value={formData.matricNumber}
-              onChange={(e) => handleInputChange("matricNumber", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              value={formData.studentEmail}
-              onChange={(e) => handleInputChange("studentEmail", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-            <input
-              type="text"
-              placeholder="Department"
-              value={formData.department}
-              onChange={(e) => handleInputChange("department", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-            <input
-              type="text"
-              placeholder="Level"
-              value={formData.level}
-              onChange={(e) => handleInputChange("level", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
+          {/* Grid for student info and case details */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Student Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Student Name</label>
+              <input
+                type="text"
+                value={formData.studentName}
+                onChange={(e) => handleInputChange("studentName", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
 
-          {/* Case Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              type="text"
-              placeholder="Case Type"
-              value={formData.caseType}
-              onChange={(e) => handleInputChange("caseType", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-            <select
-              value={formData.priority}
-              onChange={(e) => handleInputChange("priority", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
+            {/* Matric Number */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Matric Number</label>
+              <input
+                type="text"
+                value={formData.matricNumber}
+                onChange={(e) => handleInputChange("matricNumber", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
 
-            <select
-              value={formData.assignedInvestigator}
-              onChange={(e) => handleInputChange("assignedInvestigator", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Auto-assign</option>
-              {investigators.map((inv) => (
-                <option key={inv.id} value={inv.name}>
-                  {inv.name} — {inv.department}
-                </option>
-              ))}
-            </select>
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                type="email"
+                value={formData.studentEmail}
+                onChange={(e) => handleInputChange("studentEmail", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
 
-            {/* Status field */}
-            <select
-              value={formData.status}
-              onChange={(e) => handleInputChange("status", e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            >
-              <option value="active">Active</option>
-              <option value="investigating">Investigating</option>
-              <option value="pending">Pending</option>
-              <option value="resolved">Resolved</option>
-            </select>
+            {/* Department */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+              <input
+                type="text"
+                value={formData.department}
+                onChange={(e) => handleInputChange("department", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
 
-            <textarea
-              value={formData.description}
-              onChange={(e) => handleInputChange("description", e.target.value)}
-              rows={4}
-              placeholder="Description"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none md:col-span-2"
-            />
+            {/* Level */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Level</label>
+              <input
+                type="text"
+                value={formData.level}
+                onChange={(e) => handleInputChange("level", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
 
-            {/* Media upload */}
-            <div className="md:col-span-2">
+            {/* Case Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Case Type</label>
+              <input
+                type="text"
+                value={selectedCase.caseTitle}
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+              />
+            </div>
+
+            {/* Priority */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+              <select
+                value={formData.priority}
+                onChange={(e) => handleInputChange("priority", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+
+            {/* Assigned Investigator */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Investigator</label>
+              <select
+                value={formData.assignedInvestigator}
+                onChange={(e) => handleInputChange("assignedInvestigator", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Auto-assign</option>
+                {investigators.map((inv) => (
+                  <option key={inv.id} value={inv.name}>
+                    {inv.name} — {inv.department}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={formData.status}
+                onChange={(e) => handleInputChange("status", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                <option value="active">Active</option>
+                <option value="investigating">Investigating</option>
+                <option value="pending">Pending</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </div>
+
+          {/* Action Taken - only editable if status changed */}
+            {formData.status !== selectedCase.status && (
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Action Taken</label>
+                <textarea
+                  value={formData.action}
+                  onChange={(e) => handleInputChange("action", e.target.value)}
+                  rows={2}
+                  placeholder="Describe the action taken for this status change"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none"
+                />
+              </div>
+            )}
+
+
+            {/* Description */}
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => handleInputChange("description", e.target.value)}
+                rows={4}
+                placeholder="Description"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md resize-none"
+              />
+            </div>
+
+            {/* Media */}
+            <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Upload Media</label>
               <input
                 type="file"

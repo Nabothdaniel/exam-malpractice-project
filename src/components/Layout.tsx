@@ -17,7 +17,6 @@ import {
 } from "react-icons/fi"
 import { gsap } from "gsap"
 import CreateCaseModal from "./CreateCaseModal"
-import { EmailNotificationPanel } from "./EmailNotificationPanel"
 import { useAuthStore } from "../store/authStore"
 import { toast } from "react-toastify"
 
@@ -163,16 +162,6 @@ const Layout = () => {
           {/* Right: Icons + Profile */}
           <div className="flex items-center space-x-3 sm:space-x-4">
 
-            <button
-              onClick={() => setIsEmailPanelOpen(true)}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md relative"
-              title="View Email Notifications"
-            >
-              <FiMail className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
-                <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
-              </span>
-            </button>
             <div className="hidden sm:block">
               <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200">
                 <img src="/private-investigator.png" alt="User" className="w-full h-full object-cover" />
@@ -188,9 +177,8 @@ const Layout = () => {
         </main>
       </div>
 
-      {/* Modals & Panels */}
+      {/* createCase Modal*/}
       <CreateCaseModal />
-      <EmailNotificationPanel isOpen={isEmailPanelOpen} onClose={() => setIsEmailPanelOpen(false)} />
     </div>
   )
 }

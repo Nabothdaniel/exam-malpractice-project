@@ -44,6 +44,7 @@ const CasesPage = () => {
     return statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
   }
 
+
   const filteredCases = cases.filter((case_) => {
     const matchesSearch =
       case_.studentName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -157,7 +158,7 @@ const CasesPage = () => {
                   <tr key={case_.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">{case_.caseNumber}</td>
                     <td className="px-6 py-4">{case_.studentName}</td>
-                    <td className="px-6 py-4">{case_.caseType}</td>
+                    <td className="px-6 py-4">{case_.caseTitle}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 text-xs rounded-full border ${getStatusBadge(case_.status).className}`}>
                         {getStatusBadge(case_.status).label}

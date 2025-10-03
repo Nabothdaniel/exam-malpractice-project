@@ -14,9 +14,9 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase/firebase";
 import { generateCaseId } from "../utils/helperFunctions";
-import { emailService } from "../services/emailService";
 import type { Case, CaseUpdate, NewCase, CaseStore,CaseType,Student } from "@/types";
 import { uploadToCloudinary } from "../utils/cloudinary"; 
+import {emailApi} from './../utils/api'
 
 const mapDocToCase = (docSnap: QueryDocumentSnapshot): Case => {
   const data = docSnap.data() as Omit<Case, "id">;
@@ -108,7 +108,9 @@ export const useCaseStore = create<CaseStore>((set, get) => ({
 
         const updatedCaseTypes = get().caseTypes.map((ct) => ({
           ...ct,
+           id: ct.id,
           count: allCases.filter((c) => c.caseType === ct.id).length,
+           title: ct.title,
         }));
 
         set({
@@ -177,33 +179,38 @@ addCase: async (newCase: NewCase) => {
       });
     }
 
-    // 2️⃣ Create the case
-    const caseData: Omit<Case, "id"> = {
-  caseNumber: caseId,
-  studentId: studentRef.id,
-  studentName: newCase.studentName,
-  studentEmail: newCase.studentEmail,
-  assignedInvestigator: newCase.assignedInvestigator || "none",
-  status: "active",
-  createdAt: new Date().toISOString(),
-  media: null,
-  riskLevel: newCase.riskLevel || "low",
-  lastIncident: new Date().toISOString(),
-  level: newCase.level || "",
-  matricNumber: newCase.matricNumber || "",
-  department: newCase.department || "",
-  program: newCase.program || "",
-  caseType: newCase.caseType || "",
-  gender: newCase.gender || "other",
-  description: newCase.description || "",
-  priority: newCase.priority || "normal",
-};
+    // 2️⃣ Find caseTitle from caseTypes store
+    const caseTypeObj = get().caseTypes.find(ct => ct.id === newCase.caseType);
+    const caseTitle = caseTypeObj?.title || "General";
 
+    // 3️⃣ Create the case
+    const caseData: Omit<Case, "id"> & { actions: string[]; caseTitle: string } = {
+      caseNumber: caseId,
+      studentId: studentRef.id,
+      studentName: newCase.studentName,
+      studentEmail: newCase.studentEmail,
+      assignedInvestigator: newCase.assignedInvestigator || "none",
+      status: "active",
+      createdAt: new Date().toISOString(),
+      media: null,
+      riskLevel: newCase.riskLevel || "low",
+      lastIncident: new Date().toISOString(),
+      level: newCase.level || "",
+      matricNumber: newCase.matricNumber || "",
+      department: newCase.department || "",
+      program: newCase.program || "",
+      caseType: newCase.caseType || "",
+      caseTitle,          // <-- added
+      actions: [],        // <-- added
+      gender: newCase.gender || "other",
+      description: newCase.description || "",
+      priority: newCase.priority || "normal",
+    };
 
     const caseRef = await addDoc(collection(db, "cases"), caseData);
     const newCaseWithId: Case = { ...caseData, id: caseRef.id };
 
-    // 3️⃣ Update Student’s cases + stats
+    // 4️⃣ Update Student’s cases + stats
     const updatedCases = studentData?.cases ? [...studentData.cases, caseRef.id] : [caseRef.id];
     const updatedStats = {
       total: (studentData?.caseStats.total || 0) + 1,
@@ -218,12 +225,18 @@ addCase: async (newCase: NewCase) => {
       caseStats: updatedStats,
     });
 
-    // 4️⃣ Send notification
+    // 5️⃣ Send notifications
     if (newCase.studentEmail) {
-      emailService.notifyCaseCreated(caseId, newCase.studentEmail, newCase.studentName);
+      emailApi.notifyCaseCreated({
+        caseId: caseId,
+        studentName: newCase.studentName,
+        caseType: caseTitle,
+        studentEmails: [newCase.studentEmail],
+        investigatorEmails: [newCase.assignedInvestigator || "investigator@university.edu"],
+      }).catch(console.error);
     }
 
-    // 5️⃣ Update local state
+    // 6️⃣ Update local state
     set((state) => {
       const allCases = [newCaseWithId, ...state.cases];
       const recent = allCases.slice(0, 10);
@@ -242,7 +255,7 @@ addCase: async (newCase: NewCase) => {
       };
     });
 
-    // 6️⃣ Upload media if provided
+    // 7️⃣ Upload media if provided
     if (newCase.media) {
       const mediaUrl = await uploadToCloudinary(newCase.media);
       await updateDoc(caseRef, { media: mediaUrl });
@@ -258,7 +271,6 @@ addCase: async (newCase: NewCase) => {
 
   set({ isCreateCaseModalOpen: false });
 },
-
 
   // Update case
   updateCase: async (
