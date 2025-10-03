@@ -9,6 +9,7 @@ import {
   orderBy,
   onSnapshot,
   getDocs,
+  getDoc,
   where,
   QueryDocumentSnapshot
 } from "firebase/firestore";
