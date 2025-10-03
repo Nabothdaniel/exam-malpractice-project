@@ -304,14 +304,40 @@ addCase: async (newCase: NewCase) => {
   },
 
   // Update status only
-  updateCaseStatus: async (caseId: string, status: Case["status"]) => {
-    try {
-      await updateDoc(doc(db, "cases", caseId), { status });
-      await get().fetchCases();
-    } catch (error) {
-      console.error("Error updating case status:", error);
+  updateCaseStatus: async (caseId: string, newStatus: Case["status"], action: string) => {
+  try {
+    // 1️⃣ Get the existing case
+    const caseRef = doc(db, "cases", caseId);
+    const caseSnap = await getDoc(caseRef);
+
+    if (!caseSnap.exists()) {
+      console.error("Case not found:", caseId);
+      return;
     }
-  },
+
+    const caseData = caseSnap.data() as Case;
+    const oldStatus = caseData.status;
+
+    // 2️⃣ Update the status in Firestore
+    await updateDoc(caseRef, { status: newStatus });
+
+    // 3️⃣ Send status update notification to backend
+    await emailApi.notifyStatusUpdate({
+      caseId: caseId,
+      studentName: caseData.studentName,
+      oldStatus: oldStatus,
+      newStatus: newStatus,
+      action: action || "", // action entered by admin/investigator
+      recipients: [caseData.studentEmail, caseData.assignedInvestigator], // optional
+    });
+
+    // 4️⃣ Refresh local state
+    await get().fetchCases();
+  } catch (error) {
+    console.error("Error updating case status:", error);
+  }
+},
+
 
   // Delete case
   deleteCase: async (caseId: string) => {

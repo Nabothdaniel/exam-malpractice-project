@@ -10,7 +10,7 @@ interface EditCaseModalProps {
 }
 
 const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }) => {
-  const { cases, updateCase } = useCaseStore();
+  const { cases, updateCase, updateCaseStatus, notifyStatusUpdate } = useCaseStore();
   const selectedCase = cases.find((c) => c.id === selectedCaseId);
 
   const { investigators, fetchInvestigators } = useInvestigatorsStore();
@@ -64,23 +64,9 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
     setFormData((prev) => ({ ...prev, [field]: value }));
 
     if (field === "media") {
-      if (value instanceof File) {
-        setMediaPreview(URL.createObjectURL(value));
-      } else if (typeof value === "string") {
-        setMediaPreview(value);
-      } else {
-        setMediaPreview(null);
-      }
-    }
-
-    // Auto-update action when status changes
-    if (field === "status" && value !== selectedCase.status) {
-      const timestamp = new Date().toLocaleString();
-      const actionText = `Status changed from "${selectedCase.status}" to "${value}" at ${timestamp}`;
-      setFormData((prev) => ({
-        ...prev,
-        action: prev.action ? [...prev.action, actionText].join("\n") : actionText,
-      }));
+      if (value instanceof File) setMediaPreview(URL.createObjectURL(value));
+      else if (typeof value === "string") setMediaPreview(value);
+      else setMediaPreview(null);
     }
   };
 
@@ -88,23 +74,33 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
     if (!selectedCase) return;
     setLoading(true);
 
-    const updates = {
-      studentName: formData.studentName,
-      matricNumber: formData.matricNumber,
-      studentEmail: formData.studentEmail,
-      department: formData.department,
-      level: formData.level,
-      caseType: formData.caseType,
-      description: formData.description,
-      priority: formData.priority,
-      assignedInvestigator: formData.assignedInvestigator,
-      status: formData.status,
-      action: formData.action ? formData.action.split("\n") : [],
-      media: formData.media instanceof File ? formData.media : null,
-    };
-
     try {
-      await updateCase(selectedCase.id, updates);
+      // Update general fields
+      await updateCase(selectedCase.id, {
+        studentName: formData.studentName,
+        matricNumber: formData.matricNumber,
+        studentEmail: formData.studentEmail,
+        department: formData.department,
+        level: formData.level,
+        caseType: formData.caseType,
+        description: formData.description,
+        priority: formData.priority,
+        assignedInvestigator: formData.assignedInvestigator,
+        media: formData.media instanceof File ? formData.media : null,
+      });
+
+      // Handle status change separately
+      if (formData.status !== selectedCase.status) {
+        await updateCaseStatus(selectedCase.id, formData.status);
+        await notifyStatusUpdate({
+          caseId: selectedCase.id,
+          studentName: formData.studentName,
+          oldStatus: selectedCase.status,
+          newStatus: formData.status,
+          action: formData.action,
+        });
+      }
+
       toast.success("Case updated successfully ✅");
       onClose();
     } catch (err) {
@@ -131,20 +127,17 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
 
         {/* Form */}
         <div className="flex-1 overflow-auto p-6 space-y-6">
-          {/* Grid for student info and case details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Student Name */}
+            {/* Student Info */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Student Name</label>
-              <input
+              <inputs
                 type="text"
                 value={formData.studentName}
                 onChange={(e) => handleInputChange("studentName", e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               />
             </div>
-
-            {/* Matric Number */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Matric Number</label>
               <input
@@ -154,8 +147,6 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               />
             </div>
-
-            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input
@@ -165,8 +156,6 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               />
             </div>
-
-            {/* Department */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
               <input
@@ -176,8 +165,6 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               />
             </div>
-
-            {/* Level */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Level</label>
               <input
@@ -245,7 +232,7 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
               </select>
             </div>
 
-          {/* Action Taken - only editable if status changed */}
+            {/* Action Taken */}
             {formData.status !== selectedCase.status && (
               <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Action Taken</label>
@@ -258,7 +245,6 @@ const EditCaseModal: React.FC<EditCaseModalProps> = ({ selectedCaseId, onClose }
                 />
               </div>
             )}
-
 
             {/* Description */}
             <div className="sm:col-span-2">
